@@ -2,7 +2,7 @@ import os
 import time
 import json
 import subprocess
-import qrcode
+# import qrcode
 import logging
 try:
     import win32print
@@ -65,11 +65,11 @@ class PhotoboothEngine:
             logger.error(f"Error loading settings from {self.settings_path}: {e}")
             return {}
 
-    def generate_qr(self, url):
-        qr = qrcode.QRCode(version=1, box_size=20, border=1)
-        qr.add_data(url)
-        qr.make(fit=True)
-        return qr.make_image(fill_color="black", back_color="white")
+    # def generate_qr(self, url):
+    #     qr = qrcode.QRCode(version=1, box_size=20, border=1)
+    #     qr.add_data(url)
+    #     qr.make(fit=True)
+    #     return qr.make_image(fill_color="black", back_color="white")
 
     def upload_to_supabase(self, file_path, bucket_name="photos"):
         if not self.supabase:
@@ -149,7 +149,6 @@ class PhotoboothEngine:
         else:
             logger.warning(f"FRAME NOT FOUND at any of these locations: {search_paths}")
 
-        # 4. Add Mock QR Code ONLY for Preview
 
         # Save as JPG with 300 DPI to help some printers scale correctly
         canvas.save(output_path, "JPEG", quality=95, subsampling=0, dpi=(300, 300))
@@ -159,37 +158,37 @@ class PhotoboothEngine:
         else:
             logger.info(f"Clean collage (No QR) saved to {output_path} (Waiting for upload & real QR)")
 
-        time.sleep(1)
+        # time.sleep(1)
 
         return output_path
 
-    def add_qr_to_image(self, image_path, qr_url):
-        logger.info(f"Adding QR code to {image_path} with URL: {qr_url}")
-        settings = self.load_settings()
-        frame_config = settings.get(self.active_frame_type)
-        if not frame_config:
-            return False
+    # def add_qr_to_image(self, image_path, qr_url):
+    #     logger.info(f"Adding QR code to {image_path} with URL: {qr_url}")
+    #     settings = self.load_settings()
+    #     frame_config = settings.get(self.active_frame_type)
+    #     if not frame_config:
+    #         return False
 
-        try:
-            img = Image.open(image_path)
-            # Ensure it's in a mode that supports pasting RGBA
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
+    #     try:
+    #         img = Image.open(image_path)
+    #         # Ensure it's in a mode that supports pasting RGBA
+    #         if img.mode != 'RGB':
+    #             img = img.convert('RGB')
             
-            qr_slots = frame_config.get("qr_slots", [])
-            for qr_slot in qr_slots:
-                qr_img = self.generate_qr(qr_url).convert("RGBA")
-                qr_img = qr_img.resize((qr_slot["size"], qr_slot["size"]), Image.Resampling.LANCZOS)
-                # Paste QR (RGBA) on top using itself as mask
-                img.paste(qr_img, (qr_slot["x"], qr_slot["y"]), qr_img)
-                logger.debug(f"QR pasted at {qr_slot['x']}, {qr_slot['y']}")
+    #         qr_slots = frame_config.get("qr_slots", [])
+    #         for qr_slot in qr_slots:
+    #             qr_img = self.generate_qr(qr_url).convert("RGBA")
+    #             qr_img = qr_img.resize((qr_slot["size"], qr_slot["size"]), Image.Resampling.LANCZOS)
+    #             # Paste QR (RGBA) on top using itself as mask
+    #             img.paste(qr_img, (qr_slot["x"], qr_slot["y"]), qr_img)
+    #             logger.debug(f"QR pasted at {qr_slot['x']}, {qr_slot['y']}")
             
-            img.save(image_path, "JPEG", quality=95, subsampling=0, dpi=(300, 300))
-            logger.info(f"Image updated with QR code: {image_path}")
-            return True
-        except Exception as e:
-            logger.error(f"Error adding QR to image: {e}")
-            return False
+    #         img.save(image_path, "JPEG", quality=95, subsampling=0, dpi=(300, 300))
+    #         logger.info(f"Image updated with QR code: {image_path}")
+    #         return True
+    #     except Exception as e:
+    #         logger.error(f"Error adding QR to image: {e}")
+    #         return False
 
     def print_image(self, image_path):
         if not self.irfanview_path or not os.path.exists(self.irfanview_path):

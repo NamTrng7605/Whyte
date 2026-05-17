@@ -103,17 +103,26 @@
                         Khung hình & Bố cục hệ thống
                     </h3>
                 </div>
+
+                <div class="mt-8 pt-6 border-t border-gray-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="font-bold text-[13px] text-gray-500 uppercase tracking-widest">Điều chỉnh vị trí & Kích thước ảnh</h4>
+                        <button onclick="saveLayoutSettings()" class="bg-primary/10 text-primary hover:bg-primary hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">Lưu & Áp dụng</button>
+                    </div>
+                    <div id="sliders-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                        </div>
+                </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest block mb-2">Bố cục ảnh (Layout)</label>
+                        <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest block mb-2">Layout</label>
                         <select id="layout-type" onchange="loadLayout()" class="w-full bg-secondary/30 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-3 focus:outline-none transition-all font-bold text-gray-700">
                             <option value="PORTRAIT_STRIP" {% if active_type == 'PORTRAIT_STRIP' %}selected{% endif %}>Dải ảnh dọc (2x4)</option>
                             <option value="LANDSCAPE_4" {% if active_type == 'LANDSCAPE_4' %}selected{% endif %}>Ảnh ngang 4 tấm</option>
                         </select>
                     </div>
                     <div>
-                        <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest block mb-2">Chọn Khung hình (Frame)</label>
+                        <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest block mb-2">Frame</label>
                         <select id="frame-select" onchange="updateFrame()" class="w-full bg-secondary/30 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-3 focus:outline-none transition-all font-bold text-gray-700">
                             <option>Đang tải frames...</option>
                         </select>
@@ -125,7 +134,7 @@
         <div class="lg:col-span-5 space-y-6">
             <section class="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden sticky top-24">
                 <div class="p-5 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                    <h3 class="font-bold text-sm text-gray-500 uppercase tracking-widest">Bản xem trước (Live Preview)</h3>
+                    <h3 class="font-bold text-sm text-gray-500 uppercase tracking-widest">Preview</h3>
                     <div class="flex items-center gap-2">
                         <span id="auto-preview-timer" class="text-[10px] font-bold text-gray-400"></span>
                         <span id="preview-status" class="text-[10px] bg-primary text-secondary px-3 py-1 rounded-full font-extrabold">READY</span>
@@ -377,7 +386,7 @@
             if (autoPreviewTimeout) clearTimeout(autoPreviewTimeout);
             if (countdownInterval) clearInterval(countdownInterval);
             
-            let timeLeft = 3;
+            let timeLeft = 1;
             const timerEl = document.getElementById('auto-preview-timer');
             const progressEl = document.getElementById('preview-progress');
             
@@ -419,6 +428,7 @@
             const type = document.getElementById('layout-type').value;
             await fetch(`/api/set_active_type?type=${type}`, { method: 'POST' });
             loadFrames();
+            renderLayoutEditor();
             triggerAutoPreview();
         }
 
@@ -448,6 +458,129 @@
         loadLayout();
         loadPhotos();
         setInterval(() => loadPhotos(true), 3000);
+
+function renderLayoutEditor() {
+            const layout = document.getElementById('layout-type').value;
+            const slots = allSettings[layout].slots;
+            const container = document.getElementById('sliders-container');
+            const maxWidth = allSettings[layout].canvas_size[0];
+            const maxHeight = allSettings[layout].canvas_size[1];
+            
+            container.innerHTML = '';
+            
+            // Ép tỷ lệ cố định khổ 2x3: Nếu là layout Ngang thì là 3/2, còn Dọc là 2/3
+            const isLandscape = layout.includes("LANDSCAPE");
+            const ratio = isLandscape ? (3 / 2) : (2 / 3);
+            
+            slots.forEach((slot, i) => {
+                // Tự động chuẩn hóa lại kích thước ban đầu trong bộ nhớ theo đúng tỷ lệ 2x3 dựa trên chiều rộng (w) hiện tại
+                slot.h = Math.round(slot.w / ratio);
+
+                const slotHtml = `
+                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                    <div class="font-bold text-sm text-primary mb-3 flex justify-between items-center">
+                        <span>Thông số Ảnh ${i + 1}</span>
+                        <span class="text-[10px] bg-primary text-secondary px-2 py-1 rounded-md font-bold">Khóa khổ 2x3</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-xs font-semibold text-gray-600">
+                        <div>
+                            <label class="flex justify-between items-center mb-1">
+                                <span>X (Ngang):</span>
+                                <input type="number" id="num-${layout}-x-${i}" value="${slot.x}" min="0" max="${maxWidth}" oninput="updateSlot('${layout}', ${i}, 'x', this.value)" class="w-16 bg-white border border-gray-200 rounded-md text-right text-primary font-bold px-1 py-0.5 focus:outline-none focus:border-primary">
+                            </label>
+                            <input id="input-${layout}-x-${i}" type="range" min="0" max="${maxWidth}" value="${slot.x}" oninput="updateSlot('${layout}', ${i}, 'x', this.value)" class="w-full accent-primary">
+                        </div>
+                        
+                        <div>
+                            <label class="flex justify-between items-center mb-1">
+                                <span>Y (Dọc):</span>
+                                <input type="number" id="num-${layout}-y-${i}" value="${slot.y}" min="0" max="${maxHeight}" oninput="updateSlot('${layout}', ${i}, 'y', this.value)" class="w-16 bg-white border border-gray-200 rounded-md text-right text-primary font-bold px-1 py-0.5 focus:outline-none focus:border-primary">
+                            </label>
+                            <input id="input-${layout}-y-${i}" type="range" min="0" max="${maxHeight}" value="${slot.y}" oninput="updateSlot('${layout}', ${i}, 'y', this.value)" class="w-full accent-primary">
+                        </div>
+                        
+                        <div>
+                            <label class="flex justify-between items-center mb-1">
+                                <span>Width (Rộng):</span>
+                                <input type="number" id="num-${layout}-w-${i}" value="${slot.w}" min="10" max="${maxWidth}" oninput="updateSlot('${layout}', ${i}, 'w', this.value)" class="w-16 bg-white border border-gray-200 rounded-md text-right text-primary font-bold px-1 py-0.5 focus:outline-none focus:border-primary">
+                            </label>
+                            <input id="input-${layout}-w-${i}" type="range" min="10" max="${maxWidth}" value="${slot.w}" oninput="updateSlot('${layout}', ${i}, 'w', this.value)" class="w-full accent-primary">
+                        </div>
+                        
+                        <div>
+                            <label class="flex justify-between items-center mb-1">
+                                <span>Height (Cao):</span>
+                                <input type="number" id="num-${layout}-h-${i}" value="${slot.h}" min="10" max="${maxHeight}" oninput="updateSlot('${layout}', ${i}, 'h', this.value)" class="w-16 bg-white border border-gray-200 rounded-md text-right text-primary font-bold px-1 py-0.5 focus:outline-none focus:border-primary">
+                            </label>
+                            <input id="input-${layout}-h-${i}" type="range" min="10" max="${maxHeight}" value="${slot.h}" oninput="updateSlot('${layout}', ${i}, 'h', this.value)" class="w-full accent-primary">
+                        </div>
+                    </div>
+                </div>`;
+                container.innerHTML += slotHtml;
+            });
+        }
+
+        let previewDebounce;
+        function updateSlot(layout, index, prop, value) {
+            let val = parseInt(value);
+            if (isNaN(val)) return; 
+            
+            let slot = allSettings[layout].slots[index];
+            
+            const isLandscape = layout.includes("LANDSCAPE");
+            const ratio = isLandscape ? (3 / 2) : (2 / 3);
+            
+            // Xử lý thay đổi kích thước phóng to/thu nhỏ đồng bộ theo khổ 2x3
+            if (prop === 'w' || prop === 'h') {
+                if (prop === 'w') {
+                    slot.w = val;
+                    slot.h = Math.round(val / ratio); // Tự động tính chiều cao theo khổ 2x3
+                } else if (prop === 'h') {
+                    slot.h = val;
+                    slot.w = Math.round(val * ratio); // Tự động tính chiều rộng theo khổ 2x3
+                }
+                
+                // Đồng bộ giá trị hiển thị lên giao diện cho cả Width và Height
+                document.getElementById(`input-${layout}-w-${index}`).value = slot.w;
+                document.getElementById(`num-${layout}-w-${index}`).value = slot.w;
+                document.getElementById(`input-${layout}-h-${index}`).value = slot.h;
+                document.getElementById(`num-${layout}-h-${index}`).value = slot.h;
+            } else {
+                // Cấu hình di chuyển vị trí X, Y
+                slot[prop] = val;
+                document.getElementById(`input-${layout}-${prop}-${index}`).value = val;
+                document.getElementById(`num-${layout}-${prop}-${index}`).value = val;
+            }
+            
+            // Tự động gọi preview thời gian thực sau 200ms khi ngừng thao tác
+            clearTimeout(previewDebounce);
+            previewDebounce = setTimeout(() => {
+                saveLayoutSettings(true); 
+            }, 200);
+        }
+
+        async function saveLayoutSettings(silent = false) {
+            if (!silent) showLoading('Đang lưu cấu hình...');
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(allSettings)
+                });
+                if (response.ok) {
+                    if (!silent) {
+                        showToast('Đã lưu cấu hình khung hình!', 'success');
+                        hideLoading();
+                    }
+                    if (selectedPhotos.length >= 4) generatePreview();
+                }
+            } catch (e) {
+                if (!silent) {
+                    hideLoading();
+                    showToast('Lỗi khi lưu cấu hình', 'error');
+                }
+            }
+        }
     </script>
 </body>
 </html>
