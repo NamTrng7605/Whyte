@@ -1,0 +1,10 @@
+watchdog
+Pillow
+qrcode[pil]
+supabase
+python-dotenv
+fastapi
+uvicorn
+jinja2
+python-multipart
+pywin32
