@@ -150,14 +150,6 @@ class PhotoboothEngine:
             logger.warning(f"FRAME NOT FOUND at any of these locations: {search_paths}")
 
         # 4. Add Mock QR Code ONLY for Preview
-        if is_preview:
-            placeholder_url = "https://vfkalhfqpdwrgnvswpvd.supabase.co/storage/v1/object/public/photos/test_access.txt"
-            qr_slots = frame_config.get("qr_slots", [])
-            for qr_slot in qr_slots:
-                qr_img = self.generate_qr(placeholder_url).convert("RGBA")
-                qr_img = qr_img.resize((qr_slot["size"], qr_slot["size"]), Image.Resampling.LANCZOS)
-                canvas.paste(qr_img, (qr_slot["x"], qr_slot["y"]), qr_img)
-                logger.debug(f"Mock QR pasted at {qr_slot['x']}, {qr_slot['y']}")
 
         # Save as JPG with 300 DPI to help some printers scale correctly
         canvas.save(output_path, "JPEG", quality=95, subsampling=0, dpi=(300, 300))

@@ -1,11 +1,10 @@
 import os
 import time
-import shutil
-import threading
 import json
 import logging
-from datetime import datetime, timedelta
-from fastapi import FastAPI, Request, BackgroundTasks
+import threading
+from datetime import datetime
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -34,12 +33,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Folders
 PHOTOS_DIR = os.path.join(BASE_DIR, "Photos")
 OUTPUT_DIR = os.path.join(BASE_DIR, "Output_ReadyToPrint")
-ARCHIVE_DIR = os.path.join(BASE_DIR, "Archive")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
 # Ensure directories exist
-for d in [PHOTOS_DIR, OUTPUT_DIR, ARCHIVE_DIR, STATIC_DIR]:
+for d in [PHOTOS_DIR, OUTPUT_DIR, STATIC_DIR]:
     os.makedirs(d, exist_ok=True)
 
 # Templates
@@ -78,47 +76,16 @@ class PhotoboothHandler(FileSystemEventHandler):
         
         logger.info(f"Processing batch of 4 photos: {batch}")
         try:
-            # 1. Process Image (Collage without QR)
+            # 1. Xử lý ảnh ghép bố cục trực tiếp (Không có QR)
             self.engine.process_images(batch, output_path)
             
-            # 2. Upload to Supabase to get the ACTUAL public URL
-            public_url = self.engine.upload_to_supabase(output_path)
-            
-            if public_url:
-                logger.info(f"Uploaded to Supabase: {public_url}")
-                # 3. Add QR Code to local image using the real URL
-                self.engine.add_qr_to_image(output_path, public_url)
-            else:
-                logger.warning("Supabase upload failed. Printing without QR.")
-            
-            # 4. Print the final image (now with QR)
+            # 2. Gửi thẳng lệnh in đến máy in hệ thống
             logger.info(f"Sending {output_path} to printer...")
             self.engine.print_image(output_path)
             
             logger.info("Batch processed successfully.")
         except Exception as e:
             logger.error(f"Error processing batch: {e}")
-
-# Cleanup Task
-def cleanup_old_files():
-    while True:
-        try:
-            logger.info("Running scheduled cleanup...")
-            now = time.time()
-            retention_period = 24 * 3600 # 24 hours
-            
-            for directory in [PHOTOS_DIR, OUTPUT_DIR]:
-                for f in os.listdir(directory):
-                    f_path = os.path.join(directory, f)
-                    if os.path.isfile(f_path):
-                        if os.path.getmtime(f_path) < now - retention_period:
-                            logger.info(f"Archiving old file: {f}")
-                            shutil.move(f_path, os.path.join(ARCHIVE_DIR, f))
-        except Exception as e:
-            logger.error(f"Error in cleanup task: {e}")
-        
-        # Run every 6 hours
-        time.sleep(6 * 3600)
 
 # Watchdog Observer
 observer = Observer()
@@ -129,11 +96,6 @@ observer.schedule(handler, PHOTOS_DIR, recursive=False)
 def startup_event():
     observer.start()
     logger.info("Watchdog observer started.")
-    
-    # Start cleanup thread
-    cleanup_thread = threading.Thread(target=cleanup_old_files, daemon=True)
-    cleanup_thread.start()
-    logger.info("Cleanup background task started.")
 
 @app.on_event("shutdown")
 def shutdown_event():
@@ -207,20 +169,10 @@ async def manual_print(request: Request):
     engine.active_frame_type = layout_type
     
     try:
-        # 1. Process Image (Collage without QR)
+        # 1. Ghép ảnh theo layout lựa chọn
         engine.process_images(photo_paths, output_path)
         
-        # 2. Upload to Supabase to get the ACTUAL public URL
-        public_url = engine.upload_to_supabase(output_path)
-        
-        if public_url:
-            logger.info(f"Manual print uploaded to Supabase: {public_url}")
-            # 3. Add QR Code to local image using the real URL
-            engine.add_qr_to_image(output_path, public_url)
-        else:
-            logger.warning("Manual print upload failed. Printing without QR.")
-
-        # 4. Print the final image (now with QR)
+        # 2. Tiến hành in bản hoàn thiện trực tiếp
         logger.info(f"Sending manual print {output_path} to printer...")
         success = engine.print_image(output_path)
         if success:
@@ -286,7 +238,6 @@ async def set_printer(printer_name: str):
 @app.post("/api/test_print")
 async def test_print(printer_name: str):
     logger.info(f"Test print request for printer: {printer_name}")
-    # Use a dummy image or the latest preview for test print
     preview_path = os.path.join(OUTPUT_DIR, "preview_test.jpg")
     if not os.path.exists(preview_path):
         return JSONResponse({"status": "error", "message": "No preview image available to test print. Please generate a preview first."}, status_code=400)

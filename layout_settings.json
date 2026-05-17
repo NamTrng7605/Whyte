@@ -4,7 +4,7 @@
             1800,
             1200
         ],
-        "frame_path": "Frames/frame_portrait.png",
+        "frame_path": "Frames/frame ngnag.png",
         "qr_slots": [
             {
                 "size": 100,
@@ -44,7 +44,7 @@
             1200,
             1800
         ],
-        "frame_path": "Frames/1.png",
+        "frame_path": "Frames/Artboard 1@4x.png",
         "qr_slots": [
             {
                 "size": 150,
